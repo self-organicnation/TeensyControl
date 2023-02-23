@@ -37,5 +37,6 @@ const uint8_t ENCODERZS[NBMOTORS] = {23, 39, 20, 17, 38, 35};
 void initEncoders();
 int32_t getCount(uint8_t motorId);
 void setCount(uint8_t motorId, int32_t val);
+void displayAllCountSerial1();
 
 #endif

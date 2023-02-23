@@ -235,3 +235,13 @@ void initIo() {
   initSteppersPins();
   initEncoders();
 }
+
+void displayAllCountSerial1() {
+  Serial1.print("<");
+  for(uint8_t i=0; i < NBMOTORS - 1; i++) {
+    Serial1.print(getCount(i));
+    Serial1.print(",");
+  }
+  Serial1.print(getCount(NBMOTORS - 1));
+  Serial1.println(">");
+}

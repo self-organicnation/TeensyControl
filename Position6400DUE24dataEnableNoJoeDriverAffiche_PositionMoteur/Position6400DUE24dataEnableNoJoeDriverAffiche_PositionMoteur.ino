@@ -263,6 +263,7 @@ int16_t computeDeltaPosition9( uint16_t processingPosition9) {
 }
 
 void setup() {
+  initEncoders();
  //  initIo();
  // initCom();
  // initSteppers();
@@ -384,7 +385,7 @@ void loop() {
 //  digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
 //  delay(200);
 
-  Serial1.print( "encodeur0"); Serial1.println(getCount(0));
+  displayAllCountSerial1();
  
   if (PCTer1 > 0) {
  digitalWrite(ENABLEPIN[0], LOW); // you turn on the driver
