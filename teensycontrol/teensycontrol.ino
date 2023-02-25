@@ -75,9 +75,17 @@ void loop() {
 
   if (newTest.check()) {
     toggleLed();
-    displayAllCountSerial();
+    if(checkMissedStep())
+      displayAllCountSerial1();
   }
+  //readSerial(); 
+  processingControl(); 
+  run();
 
+}
+
+void processingControl() {
+  
   for (uint8_t i = 0; i < NBMOTORS - 0; i++) {
     setAccel(i, 1600 * PCTer[0]);
   }
@@ -104,7 +112,6 @@ void loop() {
       setGoal(i, -positionX[i]);
     }
     writeTargets();
-    run();
   }
 }
 
@@ -177,5 +184,4 @@ void noJoeTransformation() {
     setGoal(i, PC[i]);
   }
   writeTargets();
-  run();
 }

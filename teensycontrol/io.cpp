@@ -335,18 +335,35 @@ void initIo() {
   initEncoders();
 }
 
-void displayAllCountSerial1() {
-  Serial1.print("<");
+void displayAllCountSerial() {
+  Serial.print("<");
   for (uint8_t i = 0; i < NBMOTORS - 1; i++) {
-    Serial1.print(getCount(i));
-    Serial1.print(",");
+    Serial.print(getCount(i));
+    Serial.print(",");
   }
-  Serial1.print(getCount(NBMOTORS - 1));
-  Serial1.println(">");
+  Serial.print(getCount(NBMOTORS - 1));
+  Serial.println(">");
 }
 
-void displayAllCountSerial() {
+void displayAllCountSerial1() {
   for (uint8_t i = 0; i < NBMOTORS; i++) {
-    Serial.println(getCount(i));
+    Serial1.println(getCount(i));
   }
+}
+
+uint8_t checkMissedStep() {
+  uint8_t result = 0;
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    int32_t error = getCount(i)-getStep(i)*4000/6400;
+    if(abs(error) > 20) {
+      result += (1 << i);
+      /*
+      Serial.print("motor ");
+      Serial.print(i);
+      Serial.print(" => count error =");
+      Serial.println(error);
+      */
+    }
+  }
+  return result;
 }

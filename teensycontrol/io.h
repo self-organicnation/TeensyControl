@@ -42,5 +42,6 @@ int32_t getCount(uint8_t motorId);
 void setCount(uint8_t motorId, int32_t val);
 void displayAllCountSerial1();
 void displayAllCountSerial();
+uint8_t checkMissedStep();
 
 #endif
