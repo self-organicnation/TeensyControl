@@ -2,8 +2,8 @@
 #include "com.h"
 
 void initCom() {
-//  Serial.begin(115200);
-//  Serial1.begin(115200);
+  Serial.begin(115200);
+  Serial1.begin(1000000);
 }
 
 void printSerialCommandsAvailable() {
@@ -11,28 +11,28 @@ void printSerialCommandsAvailable() {
   Serial.println("Liste des commandes disponibles VERSION DEV 1.0");
   Serial.println("");
   Serial.println("help= : Montre l'ensemble des commandes serial disponible");
+  Serial.println("init= : Lance la séquence d'initialisation");
+  Serial.println("stop= : Stop les moteurs ");
   Serial.println("goal=N Steps : Donne l'objectif en step au moteur N");
-  Serial.println("maxspeed=N Steps : Donne l'objectif en step.s-1 au moteur N");
-  Serial.println("accel=N Steps : Donne l'objectif en step.s-2 au moteur N");
   Serial.println("go= : Fait bouger tous les moteurs");
   Serial.println("rotate= Fait tourner tous les moteurs à leur vitesse maxspeed");
   Serial.println("override=PERCENT change proportionnellement la vitesse de tous les moteurs en % de maxspeed");
-  Serial.println("init= : Lance la séquence d'initialisation");
+  Serial.println("maxspeed=N Steps : Donne l'objectif en step.s-1 au moteur N");
+  Serial.println("accel=N Steps : Donne l'objectif en step.s-2 au moteur N");
   Serial.println("codeur=N : Donne la position du codeur N");
   Serial.println("codeurs= : Donne la position de tous les codeurs");
-  Serial.println("stop= : Stop les moteur ");
  
   Serial.println("");
 }
 
 bool readSerial() {
-//  bool received = false;
-//  while (Serial.available()) {
-//    char data = Serial.read();
-//    addCharToSerialBuffer(data);
-//    received = true;
-//  }
-//  return received;
+  bool received = false;
+  while (Serial.available()) {
+    char data = Serial.read();
+    addCharToSerialBuffer(data);
+    received = true;
+  }
+  return received;
 }
 
 // Read Serial data storage
@@ -94,53 +94,64 @@ void addCharToSerialBuffer(char c) {
 }
 
 void parseSerialBuffer() {  // Parse serial data, handle all commands available over Serial
-
   int32_t val = atol(cmdArg);
   int32_t val2 = atol(cmdArg2);
 
-  // help= : Montre l'ensemble des commandes serial disponible     // USER ONLY
+  // help= : Montre l'ensemble des commandes serial disponible
   if (!strcmp(cmdOp, "help")) {
     printSerialCommandsAvailable();
   }
-  else if (!strcmp(cmdOp, "go")) {
-    Serial.println("go");
-    moveMotorsAsync();
-  }
-  else if (!strcmp(cmdOp, "goal")) {
-    printCmdValVal("goal", val, val2);
-    setGoal(val, val2);
-  }
-  else if (!strcmp(cmdOp, "maxspeed")) {
-    printCmdValVal("maxspeed", val, val2);
-    setMaxspeed(val, val2);
-  }
-  else if (!strcmp(cmdOp, "accel")) {
-    printCmdValVal("accel", val, val2);
-    setAccel(val, val2);
-  }
+  // init= : Lance la séquence d'initialisation
   else if (!strcmp(cmdOp, "init")) {
     Serial.println("init");
     initSteppers();
   }
-  else if (!strcmp(cmdOp, "codeur")) {
-    printCmdValVal("codeur", val, getCount(val));
+  // stop= : Stop les moteurs 
+  else if (!strcmp(cmdOp, "stop")) {
+    Serial.println("stop");
+    stopMotors();
+  } 
+  // goal=N Steps : Donne l'objectif en step au moteur N
+  else if (!strcmp(cmdOp, "goal")) {
+    printCmdValVal("goal", val, val2);
+    setGoal(val, val2);
   }
-  else if (!strcmp(cmdOp, "codeurs")) {
-    for(uint8_t i=0; i < NBMOTORS; i++)
-      printCmdValVal("codeur", i, getCount(i));
+  // go= : Fait bouger tous les moteurs
+  else if (!strcmp(cmdOp, "go")) {
+    Serial.println("go");
+    moveMotorsAsync();
   }
+  // rotate= Fait tourner tous les moteurs à leur vitesse maxspeed
   else if (!strcmp(cmdOp, "rotate")) {
     Serial.println("rotate");
     rotateMotors();
   }
+  // override=PERCENT change proportionnellement la vitesse de tous les moteurs en % de maxspeed
   else if (!strcmp(cmdOp, "override")) {
     printCmdVal("override", val);
     overrideSpeed(val);
   } 
-  else if (!strcmp(cmdOp, "stop")) {
-    Serial.println("stop");
-    stopMotors();
-  } else {
+  // maxspeed=N Steps : Donne l'objectif en step.s-1 au moteur N
+  else if (!strcmp(cmdOp, "maxspeed")) {
+    printCmdValVal("maxspeed", val, val2);
+    setMaxspeed(val, val2);
+  }
+  // accel=N Steps : Donne l'objectif en step.s-2 au moteur N
+  else if (!strcmp(cmdOp, "accel")) {
+    printCmdValVal("accel", val, val2);
+    setAccel(val, val2);
+  }
+  // codeur=N : Donne la position du codeur N
+  else if (!strcmp(cmdOp, "codeur")) {
+    printCmdValVal("codeur", val, getCount(val));
+  }
+  // codeurs= : Donne la position de tous les codeurs
+  else if (!strcmp(cmdOp, "codeurs")) {
+    for(uint8_t i=0; i < NBMOTORS; i++)
+      printCmdValVal("codeur", i, getCount(i));
+  }
+  // unknown => stop motors
+  else {
     Serial.println("Unknown => stop");
     stopMotors();
   }

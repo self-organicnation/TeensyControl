@@ -11,6 +11,7 @@ void toggleLed();
 
 // Motors
 #define NBMOTORS 6
+#define NBSTEPSPERTURN 6400
 
 const uint8_t STEP[NBMOTORS] = {5, 8, 11, 25, 28, 31};               
 const uint8_t DIR[NBMOTORS] = {6, 9, 12, 26, 29, 32};                
@@ -23,11 +24,13 @@ void setStep(uint8_t motorId, int32_t val);
 void setGoal(uint8_t motorNumber, int32_t val);
 void setMaxspeed(uint8_t motorNumber, int32_t val);
 void setAccel(uint8_t motorNumber, int32_t val);
+void writeTargets();
 void moveMotors();
 void moveMotorsAsync();
 void rotateMotors();
 void overrideSpeed(int percent);
 void stopMotors();
+void run();
 
 // Encoders
 const uint8_t ENCODERAS[NBMOTORS] = {21, 14, 18, 15, 36, 33};

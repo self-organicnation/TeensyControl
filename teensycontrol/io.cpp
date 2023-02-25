@@ -1,23 +1,46 @@
 #include "io.h"
-#include <TeensyStep.h>
 
-#define NBSTEPSPERTURN 6400
-#define MAXSPEED 6400  // Max 300 000
-#define ACCEL 40000    // Max 500 000
+#define INITSPEED 6400
+#define INITACCEL 6400
+#define MAXSPEED 16000  // Max value = 300 000 but too fast...
+#define ACCEL 20000     // Max value = 500 000 but too much... 6400 for accelstepper ?  6400 * 3 for DM556
+
+#define ACCELSTEP //TEENSYSTEP //ACCELSTEP
+
+#ifdef TEENSYSTEP
+
+#include <TeensyStep.h>
 
 Stepper stepperMotors[NBMOTORS] = { Stepper(STEP[0], DIR[0]), Stepper(STEP[1], DIR[1]), Stepper(STEP[2], DIR[2]), Stepper(STEP[3], DIR[3]), Stepper(STEP[4], DIR[4]), Stepper(STEP[5], DIR[5]) };
 StepControl controller;
-
-
 RotateControl rotateController(1, 500);
 
-bool isInit[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };      //Etat précisant si le moteur a été initialisé
+#endif
+
+#ifdef ACCELSTEP
+
+#include <AccelStepper.h>  // Define a stepper and the pins it will use
+
+AccelStepper stepperMotors[NBMOTORS] = {
+  AccelStepper(AccelStepper::DRIVER, STEP[0], DIR[0]),
+  AccelStepper(AccelStepper::DRIVER, STEP[1], DIR[1]),
+  AccelStepper(AccelStepper::DRIVER, STEP[2], DIR[2]),
+  AccelStepper(AccelStepper::DRIVER, STEP[3], DIR[3]),
+  AccelStepper(AccelStepper::DRIVER, STEP[4], DIR[4]),
+  AccelStepper(AccelStepper::DRIVER, STEP[5], DIR[5]),
+};
+
+#endif
+
+
+bool positionMode = true;
+bool isInit[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Etat précisant si le moteur a été initialisé
 int32_t goal[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t maxspeed[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t accel[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
-volatile int32_t zeroPos[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };        //Position zéro enregistrée quand Z passe de 1 à 0
-//const int32_t offsets[NBMOTORS] = {1300, 3720, 5120, 4720, 4370, 5920}; // => Boitier 1 ( étiquette)
-const int32_t offsets[NBMOTORS] = {3990, 1030, 585, 1430, 750, 2050}; // => Boitier 2
+volatile int32_t zeroPos[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Position zéro enregistrée quand Z passe de 1 à 0
+//const int32_t offsets[NBMOTORS] = {1300, 3720, 5120, 4720, 4370, 5920};  // => Boitier 1 ( étiquette)
+const int32_t offsets[NBMOTORS] = { 3990, 1030, 585, 1430, 750, 2050 };  // => Boitier 2
 
 void initSteppersPins() {
   for (uint8_t i = 0; i < NBMOTORS; i++) {
@@ -27,37 +50,46 @@ void initSteppersPins() {
     digitalWrite(DIR[i], LOW);
     pinMode(STEP[i], OUTPUT);
     digitalWrite(STEP[i], LOW);
-    setMaxspeed(i, MAXSPEED);
-    setAccel(i, ACCEL);
   }
 }
 
+
 void initSteppers() {
-  rotateController.stop();
-  for(uint8_t i=0; i < NBMOTORS; i++) {
-    setMaxspeed(i, MAXSPEED);
-    setStep(i,0);
+  positionMode = true;
+  stopMotors();
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    setMaxspeed(i, INITSPEED);
+    setAccel(i, INITACCEL);
+    setStep(i, 0);
     setGoal(i, NBSTEPSPERTURN);
   }
-//  moveMotors();
-  for(uint8_t i=0; i < NBMOTORS; i++) {
-    int32_t val =(zeroPos[i] + offsets[i]) % NBSTEPSPERTURN;
-    if(val < NBSTEPSPERTURN / 2)
+  moveMotors();
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    int32_t val = (zeroPos[i] + offsets[i]) % NBSTEPSPERTURN;
+    if (val < NBSTEPSPERTURN / 2)
       val += NBSTEPSPERTURN;
-    setGoal(i,val);
+    setGoal(i, val);
   }
- // moveMotors();
-  for(uint8_t i=0; i < NBMOTORS; i++) {
-    setStep(i,0);
-    setGoal(i,0);
-    setCount(i,0);
+  moveMotors();
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    setStep(i, 0);
+    setGoal(i, 0);
+    setCount(i, 0);
+  }
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    setMaxspeed(i, MAXSPEED);
+    setAccel(i, ACCEL);
   }
   Serial.println("initDone");
 }
 
 void setStep(uint8_t motorNumber, int32_t val) {
+#ifdef TEENSYSTEP
   stepperMotors[motorNumber].setPosition(val);  // TeensyStep
-  //stepperMotors[motorNumber].setCurrentPosition(val); // accelStepper
+#endif
+#ifdef ACCELSTEP
+  stepperMotors[motorNumber].setCurrentPosition(val);  // accelStepper
+#endif
 }
 
 void setGoal(uint8_t motorNumber, int32_t val) {
@@ -74,50 +106,118 @@ void setAccel(uint8_t motorNumber, int32_t val) {
   stepperMotors[motorNumber].setAcceleration(accel[motorNumber]);
 }
 
-void moveMotors() {
+void writeTargets() {
   for (uint8_t i = 0; i < NBMOTORS; i++) {
-    stepperMotors[i].setTargetAbs(goal[i]);
-    //stepperMotors[i].moveTo(goal[i]); // AccelStepper
+#ifdef TEENSYSTEP
+    stepperMotors[i].setTargetAbs(goal[i]);  // Teensystep
+#endif
+#ifdef ACCELSTEP
+    stepperMotors[i].setMaxSpeed(maxspeed[i]);  // in case maxspeed have been override with override function
+    stepperMotors[i].moveTo(goal[i]);  // AccelStepper
+#endif
   }
+}
+void moveMotors() {
+  positionMode = true;
+#ifdef TEENSYSTEP
+  rotateController.stop();
+#endif
+  writeTargets();
+#ifdef TEENSYSTEP
   controller.move(stepperMotors[0], stepperMotors[1], stepperMotors[2], stepperMotors[3], stepperMotors[4], stepperMotors[5]);
-  //controller.move(stepperMotors);
+#endif
+#ifdef ACCELSTEP
+  bool end = false;
+  while (!end) {
+    end = true;
+    for (uint8_t i = 0; i < NBMOTORS; i++) {
+      if(stepperMotors[i].distanceToGo())
+        end = false;
+    }
+    run();
+  }
+#endif
+}
 
+void run() {
+#ifdef ACCELSTEP
+  if(positionMode) {
+    for (uint8_t i = 0; i < NBMOTORS; i++)
+      stepperMotors[i].run();
+  } else {
+    for (uint8_t i = 0; i < NBMOTORS; i++)
+      stepperMotors[i].runSpeed();
+  }
+#endif
 }
 
 void moveMotorsAsync() {
+  positionMode = true;
+#ifdef TEENSYSTEP
   rotateController.stop();
-  for (uint8_t i = 0; i < NBMOTORS; i++) {
-    stepperMotors[i].setTargetAbs(goal[i]);
-    //stepperMotors[i].moveTo(goal[i]); // AccelStepper
-  }
-  //controller.moveAsync(stepperMotors);
+#endif
+  writeTargets();
+#ifdef TEENSYSTEP
   controller.moveAsync(stepperMotors[0], stepperMotors[1], stepperMotors[2], stepperMotors[3], stepperMotors[4], stepperMotors[5]);
+#endif
 }
 
 
 void rotateMotors() {
+  positionMode = false;
+#ifdef TEENSYSTEP
   controller.stop();
   rotateController.stop();
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     stepperMotors[i].setMaxSpeed(maxspeed[i]);
   }
   rotateController.rotateAsync(stepperMotors[0], stepperMotors[1], stepperMotors[2], stepperMotors[3], stepperMotors[4], stepperMotors[5]);
+#endif
+#ifdef ACCELSTEP 
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    stepperMotors[i].setMaxSpeed(maxspeed[i]);
+    stepperMotors[i].setSpeed(maxspeed[i]); 
+  }
+#endif
 }
 
 void overrideSpeed(int percent) {
+#ifdef TEENSYSTEP
   float ratio = percent / 100.0;
-  rotateController.overrideSpeed(ratio); 
+  rotateController.overrideSpeed(ratio);
+#endif
+#ifdef ACCELSTEP 
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    int32_t speed = maxspeed[i] * percent / 100;
+    stepperMotors[i].setMaxSpeed(speed);
+    stepperMotors[i].setSpeed(speed); 
+  }
+#endif
 }
 
-void stopMotors(){
+void stopMotors() {
+  positionMode = true;
+#ifdef TEENSYSTEP
   overrideSpeed(0);
   rotateController.stop();
   controller.stop();
+#endif
+#ifdef ACCELSTEP 
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    stepperMotors[i].stop();
+    setGoal(i, getStep(i));
+  }
+  writeTargets();
+#endif
 }
 
 int32_t getStep(uint8_t motorNumber) {
+#ifdef TEENSYSTEP
   return stepperMotors[motorNumber].getPosition();  // TeensyStep
-  // return stepperMotors[motorNumber].currentPosition(); // accelStepper
+#endif
+#ifdef ACCELSTEP
+  return stepperMotors[motorNumber].currentPosition();  // accelStepper
+#endif
 }
 
 // Encodeurs
@@ -126,7 +226,6 @@ volatile int16_t rotationSpeed[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Vitesse de r
 volatile bool laststateA[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };        //Etat précédent des sorties A des enncodeurs
 volatile bool laststateB[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };        //Etat précédent des sorties B des enncodeurs
 volatile bool laststateZ[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };        //Etat précédent des sorties Z des enncodeurs
-
 
 void counterA(uint8_t motorNumber) {
   bool stateA = digitalRead(ENCODERAS[motorNumber]);
@@ -210,9 +309,9 @@ void initEncoders() {
     pinMode(ENCODERAS[i], INPUT_PULLUP);
     pinMode(ENCODERBS[i], INPUT_PULLUP);
     pinMode(ENCODERZS[i], INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(ENCODERAS[i]), counterEncoderA[i], CHANGE);    //S'active lorsqu'il y a un changement d'état sur la pin de l'encodeur A
-    attachInterrupt(digitalPinToInterrupt(ENCODERBS[i]), counterEncoderB[i], CHANGE);    //S'active lorsqu'il y a un changement d'état sur la pin de l'encodeur B
-    attachInterrupt(digitalPinToInterrupt(ENCODERZS[i]), interruptEncoderZ[i], FALLING); //S'active lorsqu'il y a un changement d'état haut vers bas sur la pin de l'encodeur Z
+    attachInterrupt(digitalPinToInterrupt(ENCODERAS[i]), counterEncoderA[i], CHANGE);     //S'active lorsqu'il y a un changement d'état sur la pin de l'encodeur A
+    attachInterrupt(digitalPinToInterrupt(ENCODERBS[i]), counterEncoderB[i], CHANGE);     //S'active lorsqu'il y a un changement d'état sur la pin de l'encodeur B
+    attachInterrupt(digitalPinToInterrupt(ENCODERZS[i]), interruptEncoderZ[i], FALLING);  //S'active lorsqu'il y a un changement d'état haut vers bas sur la pin de l'encodeur Z
   }
 }
 
@@ -238,7 +337,7 @@ void initIo() {
 
 void displayAllCountSerial1() {
   Serial1.print("<");
-  for(uint8_t i=0; i < NBMOTORS - 1; i++) {
+  for (uint8_t i = 0; i < NBMOTORS - 1; i++) {
     Serial1.print(getCount(i));
     Serial1.print(",");
   }
