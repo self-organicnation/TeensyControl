@@ -73,10 +73,14 @@ void setup() {
 
 void loop() {
 
+  if (newTest.check()) {
+    toggleLed();
+    displayAllCountSerial();
+  }
+
   for (uint8_t i = 0; i < NBMOTORS - 0; i++) {
     setAccel(i, 1600 * PCTer[0]);
   }
-
 
   recvWithStartEndMarkers();  // recevoir chaine de character et disperse en unité
   if (newData == true) {

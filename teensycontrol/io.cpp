@@ -344,3 +344,9 @@ void displayAllCountSerial1() {
   Serial1.print(getCount(NBMOTORS - 1));
   Serial1.println(">");
 }
+
+void displayAllCountSerial() {
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    Serial.println(getCount(i));
+  }
+}
