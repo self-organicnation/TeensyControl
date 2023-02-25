@@ -104,6 +104,7 @@ void loop() {
       setGoal(i, -positionX[i]);
     }
     writeTargets();
+    run();
   }
 }
 
