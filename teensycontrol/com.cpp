@@ -21,6 +21,7 @@ void printSerialCommandsAvailable() {
   Serial.println("accel=N Steps : Donne l'objectif en step.s-2 au moteur N");
   Serial.println("codeur=N : Donne la position du codeur N");
   Serial.println("codeurs= : Donne la position de tous les codeurs");
+  Serial.println("mode= : indique le mode de pilotage Teensystepper ou Accelstepper");
  
   Serial.println("");
 }
@@ -149,6 +150,10 @@ void parseSerialBuffer() {  // Parse serial data, handle all commands available 
   else if (!strcmp(cmdOp, "codeurs")) {
     for(uint8_t i=0; i < NBMOTORS; i++)
       printCmdValVal("codeur", i, getCount(i));
+  }
+  //mode= : indique le mode de pilotage Teensystepper ou Accelstepper
+  else if (!strcmp(cmdOp, "mode")) {
+    displayMode();
   }
   // unknown => stop motors
   else {

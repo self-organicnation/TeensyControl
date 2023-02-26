@@ -3,9 +3,18 @@
 #define INITSPEED 6400
 #define INITACCEL 6400
 #define MAXSPEED 16000  // Max value = 300 000 but too fast...
-#define ACCEL 20000     // Max value = 500 000 but too much... 6400 for accelstepper ?  6400 * 3 for DM556
+#define ACCEL 12800     // Max value = 500 000 but too much... 6400 for accelstepper ?  6400 * 3 for DM556
 
 #define ACCELSTEP //TEENSYSTEP //ACCELSTEP
+
+void displayMode() {
+#ifdef TEENSYSTEP
+  Serial.println("Teensystep");
+#endif
+#ifdef ACCELSTEP
+  Serial.println("Accelstep");
+#endif
+}
 
 #ifdef TEENSYSTEP
 
@@ -39,7 +48,7 @@ int32_t goal[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t maxspeed[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t accel[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 volatile int32_t zeroPos[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Position zéro enregistrée quand Z passe de 1 à 0
-//const int32_t offsets[NBMOTORS] = {1300, 3720, 5120, 4720, 4370, 5920};  // => Boitier 1 ( étiquette)
+//const int32_t offsets[NBMOTORS] = { 1300, 3720, 5120, 4720, 4370, 5920 };  // => Boitier 1 ( étiquette)
 const int32_t offsets[NBMOTORS] = { 3990, 1030, 585, 1430, 750, 2050 };  // => Boitier 2
 
 void initSteppersPins() {
@@ -106,21 +115,26 @@ void setAccel(uint8_t motorNumber, int32_t val) {
   stepperMotors[motorNumber].setAcceleration(accel[motorNumber]);
 }
 
-void writeTargets() {
-  for (uint8_t i = 0; i < NBMOTORS; i++) {
+void writeTarget(uint8_t n) {
 #ifdef TEENSYSTEP
-    stepperMotors[i].setTargetAbs(goal[i]);  // Teensystep
+  stepperMotors[n].setTargetAbs(goal[n]);  // Teensystep
 #endif
 #ifdef ACCELSTEP
-    stepperMotors[i].setMaxSpeed(maxspeed[i]);  // in case maxspeed have been override with override function
-    stepperMotors[i].moveTo(goal[i]);  // AccelStepper
+  stepperMotors[n].setMaxSpeed(maxspeed[n]);  // in case maxspeed have been override with override function
+  stepperMotors[n].moveTo(goal[n]);           // AccelStepper
 #endif
+}
+
+void writeTargets() {
+  for (uint8_t i = 0; i < NBMOTORS; i++) {
+    writeTarget(i);
   }
 }
 void moveMotors() {
   positionMode = true;
 #ifdef TEENSYSTEP
   rotateController.stop();
+  controller.stop();
 #endif
   writeTargets();
 #ifdef TEENSYSTEP
@@ -131,7 +145,7 @@ void moveMotors() {
   while (!end) {
     end = true;
     for (uint8_t i = 0; i < NBMOTORS; i++) {
-      if(stepperMotors[i].distanceToGo())
+      if (stepperMotors[i].distanceToGo())
         end = false;
     }
     run();
@@ -141,7 +155,7 @@ void moveMotors() {
 
 void run() {
 #ifdef ACCELSTEP
-  if(positionMode) {
+  if (positionMode) {
     for (uint8_t i = 0; i < NBMOTORS; i++)
       stepperMotors[i].run();
   } else {
@@ -155,6 +169,7 @@ void moveMotorsAsync() {
   positionMode = true;
 #ifdef TEENSYSTEP
   rotateController.stop();
+  controller.stop();
 #endif
   writeTargets();
 #ifdef TEENSYSTEP
@@ -173,10 +188,10 @@ void rotateMotors() {
   }
   rotateController.rotateAsync(stepperMotors[0], stepperMotors[1], stepperMotors[2], stepperMotors[3], stepperMotors[4], stepperMotors[5]);
 #endif
-#ifdef ACCELSTEP 
+#ifdef ACCELSTEP
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     stepperMotors[i].setMaxSpeed(maxspeed[i]);
-    stepperMotors[i].setSpeed(maxspeed[i]); 
+    stepperMotors[i].setSpeed(maxspeed[i]);
   }
 #endif
 }
@@ -186,11 +201,11 @@ void overrideSpeed(int percent) {
   float ratio = percent / 100.0;
   rotateController.overrideSpeed(ratio);
 #endif
-#ifdef ACCELSTEP 
+#ifdef ACCELSTEP
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     int32_t speed = maxspeed[i] * percent / 100;
     stepperMotors[i].setMaxSpeed(speed);
-    stepperMotors[i].setSpeed(speed); 
+    stepperMotors[i].setSpeed(speed);
   }
 #endif
 }
@@ -202,7 +217,7 @@ void stopMotors() {
   rotateController.stop();
   controller.stop();
 #endif
-#ifdef ACCELSTEP 
+#ifdef ACCELSTEP
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     stepperMotors[i].stop();
     setGoal(i, getStep(i));
@@ -351,18 +366,43 @@ void displayAllCountSerial1() {
   }
 }
 
-uint8_t checkMissedStep() {
+void rewriteCurrentStepWhileMoving(uint8_t n, int32_t step) {
+  setStep(n, step);
+  writeTarget(n);
+  if (positionMode)
+    moveMotorsAsync();
+}
+
+uint8_t checkMissedStep(bool rewrite) {
   uint8_t result = 0;
   for (uint8_t i = 0; i < NBMOTORS; i++) {
-    int32_t error = getCount(i)-getStep(i)*4000/6400;
-    if(abs(error) > 20) {
+    int32_t step = getStep(i);
+    int32_t count = getCount(i);
+    int32_t error = count - step * 4000 / 6400;
+    int32_t errorTarget = count - goal[i] * 4000 / 6400;
+
+    if (abs(error) > 20) {
       result += (1 << i);
       /*
       Serial.print("motor ");
       Serial.print(i);
-      Serial.print(" => count error =");
+      Serial.print(" => count = ");
+      Serial.print(count);
+      Serial.print(" => step =");
+      Serial.print(step);
+      Serial.print(" => error = ");
       Serial.println(error);
       */
+      if (rewrite) {
+        if (errorTarget >= 4000) {
+          count -= 4000;
+          setCount(i, count);
+        } else if (errorTarget <= -4000) {
+          count += 4000;
+          setCount(i, count);
+        }
+        rewriteCurrentStepWhileMoving(i, count * 6400 / 4000);
+      }
     }
   }
   return result;

@@ -31,6 +31,8 @@ void rotateMotors();
 void overrideSpeed(int percent);
 void stopMotors();
 void run();
+void rewriteCurrentStepWhileMoving(uint8_t n, int32_t step);
+void displayMode();
 
 // Encoders
 const uint8_t ENCODERAS[NBMOTORS] = {21, 14, 18, 15, 36, 33};
@@ -42,6 +44,6 @@ int32_t getCount(uint8_t motorId);
 void setCount(uint8_t motorId, int32_t val);
 void displayAllCountSerial1();
 void displayAllCountSerial();
-uint8_t checkMissedStep();
+uint8_t checkMissedStep(bool rewrite);
 
 #endif
