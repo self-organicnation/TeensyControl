@@ -2,8 +2,8 @@
 
 #define INITSPEED 6400
 #define INITACCEL 6400
-#define MAXSPEED 16000  // Max value = 300 000 but too fast...
-#define ACCEL 12800     // Max value = 500 000 but too much... 6400 for accelstepper ?  6400 * 3 for DM556
+#define MAXSPEED 196000  // Max value = 300 000 but too fast...
+#define ACCEL 6400   //  12800 // Max value = 500 000 but too much... 6400 for accelstepper ?  6400 * 3 for DM556
 
 #define ACCELSTEP //TEENSYSTEP //ACCELSTEP
 
@@ -50,6 +50,8 @@ uint32_t accel[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 volatile int32_t zeroPos[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Position zéro enregistrée quand Z passe de 1 à 0
 //const int32_t offsets[NBMOTORS] = { 1300, 3720, 5120, 4720, 4370, 5920 };  // => Boitier 1 ( étiquette)
 const int32_t offsets[NBMOTORS] = { 3990, 1030, 585, 1430, 750, 2050 };  // => Boitier 2
+int32_t errorArray[NBMOTORS] = { 0, 0, 0, 0, 0, 0 }; 
+int32_t errorTargetArray[NBMOTORS] = { 0, 0, 0, 0, 0, 0 }; 
 
 void initSteppersPins() {
   for (uint8_t i = 0; i < NBMOTORS; i++) {
@@ -361,9 +363,12 @@ void displayAllCountSerial() {
 }
 
 void displayAllCountSerial1() {
-  for (uint8_t i = 0; i < NBMOTORS; i++) {
-    Serial1.println(getCount(i));
+  for (uint8_t i = 0; i < NBMOTORS-1; i++) {
+    Serial1.print(getCount(i));
+     Serial.print(",");
   }
+  Serial.print(getCount(NBMOTORS - 1));
+  Serial.println(">");
 }
 
 void rewriteCurrentStepWhileMoving(uint8_t n, int32_t step) {
@@ -375,11 +380,50 @@ void rewriteCurrentStepWhileMoving(uint8_t n, int32_t step) {
 
 uint8_t checkMissedStep(bool rewrite) {
   uint8_t result = 0;
+//  int32_t  errorTargetArray[NBMOTORS];
+    
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     int32_t step = getStep(i);
     int32_t count = getCount(i);
     int32_t error = count - step * 4000 / 6400;
+    errorArray[i] = count - step * 4000 / 6400;
     int32_t errorTarget = count - goal[i] * 4000 / 6400;
+
+ //     if (abs(error) > 20 && ((count - goal[0] * 4000 / 6400)>=5) ||
+ //     ((count - goal[i] * 4000 / 6400)<=5))
+ 
+ //   int32_t  errorTargetArray[NBMOTORS];
+    
+    errorTargetArray[i]=count - goal[i] * 4000 / 6400;
+
+        if (abs(errorArray[0]) > 20 && (abs(errorTargetArray[0]) > 5 ))    
+      {
+        Serial1.println(" encodeur0 ");
+      }
+    
+        if (abs(errorArray[1]) > 20 && (abs(errorTargetArray[1]) > 5 ))      
+      {
+        Serial1.println(" encodeur1 ");
+      }
+
+        if (abs(errorArray[2]) > 20 && (abs(errorTargetArray[2]) > 5 ))    
+      {
+        Serial1.println(" encodeur2 ");
+      }
+ 
+        if (abs(errorArray[3]) > 20 && (abs(errorTargetArray[3]) > 5 ))      
+      {
+        Serial1.println(" encodeur3 ");
+      }
+        if (abs(errorArray[4]) > 20 && (abs(errorTargetArray[4]) > 5 ))    
+      {
+        Serial1.println(" encodeur4 ");
+      }
+        if (abs(errorArray[5]) > 20 && (abs(errorTargetArray[5]) > 5 ))      
+      {
+        Serial1.println(" encodeur5 ");
+      }
+
 
     if (abs(error) > 20) {
       result += (1 << i);
@@ -393,6 +437,16 @@ uint8_t checkMissedStep(bool rewrite) {
       Serial.print(" => error = ");
       Serial.println(error);
       */
+      /*
+      Serial1.print("motor ");
+      Serial1.print(i);
+      Serial1.print(" => count = ");
+      Serial1.print(count);
+      Serial1.print(" => step =");
+      Serial1.print(step);
+      Serial1.print(" => error = ");
+      Serial1.println(error);
+      */
       if (rewrite) {
         if (errorTarget >= 4000) {
           count -= 4000;
@@ -405,5 +459,8 @@ uint8_t checkMissedStep(bool rewrite) {
       }
     }
   }
+
+
+  
   return result;
 }
