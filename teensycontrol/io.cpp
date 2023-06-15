@@ -48,8 +48,8 @@ int32_t goal[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t maxspeed[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 uint32_t accel[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };
 volatile int32_t zeroPos[NBMOTORS] = { 0, 0, 0, 0, 0, 0 };  //Position zéro enregistrée quand Z passe de 1 à 0
-//const int32_t offsets[NBMOTORS] = { 1300, 3720, 5120, 4720, 4370, 5920 };  // => Boitier 1 ( étiquette)
-const int32_t offsets[NBMOTORS] = { 3990, 1030, 585, 1430, 750, 2050 };  // => Boitier 2
+const int32_t offsets[NBMOTORS] = { 1300, 3720, 5120, 4720, 4370, 5920 };  // => Boitier 1 ( étiquette)
+//const int32_t offsets[NBMOTORS] = { 3990, 1030, 585, 1430, 750, 2050 };  // => Boitier 2
 int32_t errorArray[NBMOTORS] = { 0, 0, 0, 0, 0, 0 }; 
 int32_t errorTargetArray[NBMOTORS] = { 0, 0, 0, 0, 0, 0 }; 
 
@@ -363,12 +363,14 @@ void displayAllCountSerial() {
 }
 
 void displayAllCountSerial1() {
+//   Serial1.print("<");
   for (uint8_t i = 0; i < NBMOTORS-1; i++) {
     Serial1.print(getCount(i));
-     Serial.print(",");
+    Serial1.print(",");
   }
-  Serial.print(getCount(NBMOTORS - 1));
-  Serial.println(">");
+  Serial1.print(getCount(NBMOTORS - 1));
+   Serial1.println();
+ // Serial1.println(">");
 }
 
 void rewriteCurrentStepWhileMoving(uint8_t n, int32_t step) {
@@ -386,49 +388,13 @@ uint8_t checkMissedStep(bool rewrite) {
     int32_t step = getStep(i);
     int32_t count = getCount(i);
     int32_t error = count - step * 4000 / 6400;
-    errorArray[i] = count - step * 4000 / 6400;
     int32_t errorTarget = count - goal[i] * 4000 / 6400;
-
- //     if (abs(error) > 20 && ((count - goal[0] * 4000 / 6400)>=5) ||
- //     ((count - goal[i] * 4000 / 6400)<=5))
- 
- //   int32_t  errorTargetArray[NBMOTORS];
-    
-    errorTargetArray[i]=count - goal[i] * 4000 / 6400;
-
-        if (abs(errorArray[0]) > 20 && (abs(errorTargetArray[0]) > 5 ))    
-      {
-        Serial1.println(" encodeur0 ");
-      }
-    
-        if (abs(errorArray[1]) > 20 && (abs(errorTargetArray[1]) > 5 ))      
-      {
-        Serial1.println(" encodeur1 ");
-      }
-
-        if (abs(errorArray[2]) > 20 && (abs(errorTargetArray[2]) > 5 ))    
-      {
-        Serial1.println(" encodeur2 ");
-      }
- 
-        if (abs(errorArray[3]) > 20 && (abs(errorTargetArray[3]) > 5 ))      
-      {
-        Serial1.println(" encodeur3 ");
-      }
-        if (abs(errorArray[4]) > 20 && (abs(errorTargetArray[4]) > 5 ))    
-      {
-        Serial1.println(" encodeur4 ");
-      }
-        if (abs(errorArray[5]) > 20 && (abs(errorTargetArray[5]) > 5 ))      
-      {
-        Serial1.println(" encodeur5 ");
-      }
-
+   
 
     if (abs(error) > 20) {
       result += (1 << i);
+      Serial1.println(String("encodeur")+String(i));
       /*
-      Serial.print("motor ");
       Serial.print(i);
       Serial.print(" => count = ");
       Serial.print(count);

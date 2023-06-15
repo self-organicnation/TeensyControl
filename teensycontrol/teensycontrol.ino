@@ -3,8 +3,9 @@
 #include "processing.h"
 #include <Metro.h>  // Include the Metro library
 
-Metro displayMissedStep = Metro(100);  // 100ms
+Metro displayMissedStep = Metro(30);  // 30ms
 Metro moveMissedStep = Metro(2000);    // 2s
+
 
 #define PROCESSING  // Uncomment this line to use proccessing, comment this line if you want to use serial demo.
 #define AUTORETURN  // Uncomment this line to use auto return feature, comment to desactivate the feature.
@@ -17,20 +18,21 @@ void setup() {
   initProcessing();
 #else
   printSerialCommandsAvailable();
-#endif
+#endif 
 }
 
 void loop() {
-
   if (displayMissedStep.check()) {
     toggleLed();
-    if (checkMissedStep(false)) {
+    
+//    if (checkMissedStep(false)) {
 #ifdef PROCESSING
       displayAllCountSerial1();
+      checkMissedStep(false);
 #else
       displayAllCountSerial();
 #endif
-    }
+//    }
   }
 
   if (moveMissedStep.check()) {
