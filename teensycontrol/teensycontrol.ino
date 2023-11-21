@@ -3,8 +3,13 @@
 #include "processing.h"
 #include <Metro.h>  // Include the Metro library
 
-Metro displayMissedStep = Metro(100);  // 100ms
-Metro moveMissedStep = Metro(2000);    // 2s
+//int timeElapsedBeforeAdaptPositionFromProcessing;
+int timeElapsedBeforeAdaptPosition = 8000;
+int missedStepInterval;
+
+Metro displayMissedStep = Metro(30);  // 30ms
+Metro moveMissedStep = Metro(timeElapsedBeforeAdaptPosition);    // 1seconde
+
 
 #define PROCESSING  // Uncomment this line to use proccessing, comment this line if you want to use serial demo.
 #define AUTORETURN  // Uncomment this line to use auto return feature, comment to desactivate the feature.
@@ -17,20 +22,21 @@ void setup() {
   initProcessing();
 #else
   printSerialCommandsAvailable();
-#endif
+#endif 
 }
 
 void loop() {
-
   if (displayMissedStep.check()) {
     toggleLed();
-    if (checkMissedStep(false)) {
+    
+//    if (checkMissedStep(false)) {
 #ifdef PROCESSING
       displayAllCountSerial1();
+      checkMissedStep(false);
 #else
       displayAllCountSerial();
 #endif
-    }
+//    }
   }
 
   if (moveMissedStep.check()) {
@@ -41,6 +47,21 @@ void loop() {
 
 #ifdef PROCESSING
   processingControl();
+  
+  /*
+    if ( PCTer[5] != missedStepInterval ) {
+       moveMissedStep.interval(PCTer[5]);
+       missedStepInterval = PCTer[5]; 
+      } 
+  */  
+
+ // timeElapsedBeforeAdaptPosition=  timeElapsedBeforeAdaptPositionFromProcessing;
+
+    if (  timeElapsedBeforeAdaptPosition != missedStepInterval ) {
+       moveMissedStep.interval(timeElapsedBeforeAdaptPosition);
+       missedStepInterval = timeElapsedBeforeAdaptPosition; 
+      } 
+         
 #else
   readSerial();
 #endif
