@@ -3,7 +3,7 @@
 
 void initCom() {
   Serial.begin(115200);
-  Serial1.begin(1000000);
+  Serial1.begin(115200);
 }
 
 void printSerialCommandsAvailable() {
