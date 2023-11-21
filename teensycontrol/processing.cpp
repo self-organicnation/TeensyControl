@@ -1,5 +1,6 @@
 #include "processing.h"
 
+
 //   Receive with start- and end-markers combined with parsing
 const byte numChars = 200;
 char receivedChars[numChars];
@@ -9,6 +10,15 @@ char tempChars[numChars];  // temporary array for use when parsing
 char messageFromPC[numChars] = { 0 };  //or 5 doesn't change anything
 
 #define NBDATA 10
+
+int timeElasped;
+
+//int missedStepInterval;
+
+int  timeElapsedBeforeAdaptPositionFromProcessing;
+
+
+
 int integerFromPC[NBDATA] = { 0 };
 int PC[NBDATA] = { 0 };
 int PCTer[NBDATA] = { 0 };
@@ -44,6 +54,9 @@ int16_t computeDeltaPosition(uint8_t n) {
   oldPositionAbsolue[n] = positionAbsolue;
   return resultat;
 }
+void doReboot() {  // reset Teensy
+  SCB_AIRCR = 0x05FA0004;
+}
 
 void initProcessing() {
   for (uint8_t i = 0; i < NBDATA; i++) {
@@ -52,16 +65,87 @@ void initProcessing() {
 
   int tourTest = 6400 * 0;
 
+  timeElapsedBeforeAdaptPositionFromProcessing=8000;
+
   for (uint8_t i = 0; i < NBMOTORS; i++) {
     PC[i] = tourTest * 1;  // premier devant moi
   }
 
   PCTer[2] = -3;  //noJoe method of Processng data conversion
+  
+  PCTer[4] = 1;  // driver actived (LOW
+  PCTer[1] = 0;  // driver disable (HIGH
 }
 
 
 void processingControl() {
+
+  if (PCTer[1] > 0)
+  {
+    digitalWrite(EN[0], LOW);  
+  }
+
+  if (PCTer[1] < 1)
+  {
+    digitalWrite(EN[0], HIGH);  
+  }
+
+  if (PCTer[4] > 0)
+  {
+    digitalWrite(EN[NBMOTORS-1], LOW); //
+    digitalWrite(EN[NBMOTORS-2], LOW);
+    digitalWrite(EN[NBMOTORS-3], LOW);
+    digitalWrite(EN[NBMOTORS-4], LOW); 
+    digitalWrite(EN[NBMOTORS-5], LOW);  
+  } 
   
+  if (PCTer[4] < 1)
+  {
+    digitalWrite(EN[NBMOTORS-1], HIGH);  // 
+    digitalWrite(EN[NBMOTORS-2], HIGH);
+    digitalWrite(EN[NBMOTORS-3], HIGH);
+    digitalWrite(EN[NBMOTORS-4], HIGH); 
+    digitalWrite(EN[NBMOTORS-5], HIGH);  
+  }
+
+   timeElapsedBeforeAdaptPositionFromProcessing = PCTer[5]; 
+
+ //  timeElapsedBeforeAdaptPosition=  timeElapsedBeforeAdaptPositionFromProcessing;
+
+   
+/*
+  if ( PCTer[5] != missedStepInterval ) {
+       moveMissedStep.interval(PCTer[5]);
+       missedStepInterval = PCTer[5]; 
+      }  
+ */     
+
+  //------------  Bellow method to avoiding motor go back to zero when i restart Processing. It doesn't work
+
+    // load 0 to all motor. Erase position datas
+  if (PCTer[3] >= 2) {
+     for (uint8_t i = 0; i < NBDATA; i++) {
+      PC[i]=0;
+      processingPosition[i] = PC[i];
+      positionX[i]=processingPosition[i];
+        
+    }
+    doReboot();
+  }
+ 
+/*
+  if (PCTer[3] >= 2) {
+     for (uint8_t i = 0; i < NBDATA; i++) {
+      PC[i]=0;
+      processingPosition[i] = PC[i];
+     
+      
+    }
+    doReboot();
+  }
+
+   //  Maybe it is better to find something else in Processing
+ */ 
   recvWithStartEndMarkers();  // recevoir chaine de character et disperse en unité
   if (newData == true) {
     strcpy(tempChars, receivedChars);
@@ -88,6 +172,10 @@ void processingControl() {
     }
     writeTargets();
   }
+
+
+  
+
 }
 
 void recvWithStartEndMarkers() {
