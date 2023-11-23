@@ -31,7 +31,7 @@ int startStop = 0;
 float floatFromPC = 0.0;  // not used for the moment
 
 boolean newData = false;
-//==================================================================== CHECK NUMBEROF ROUND AND GOOD MOVEMENT
+//==================================================================== CHECK NUMBER OF ROUND AND GOOD MOVEMENT
 
 #define TX_SIZE 512
 uint8_t tx_buffer[TX_SIZE];
